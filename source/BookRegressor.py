@@ -45,5 +45,5 @@ class BookRegressor(nn.Module):
         return x + residual
 
     def load(self, path):
-        self.load_state_dict(torch.load("best_model_0_758.pt", map_location=self._device))
+        self.load_state_dict(torch.load(path, map_location=self._device))
         self.eval()
