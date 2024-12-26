@@ -77,38 +77,38 @@ class Cleaner:
         return df_init
 
     def __call__(self, table):
-        df = table.dropna(subset=['myPrice'])
+        table = table.dropna(subset=['myPrice'])
 
-        df['rate'] = df['rate'].fillna(0.0)
-        df['pages'] = df['pages'].fillna(0.0)
-        df['rate'] = df['rate'].round()
+        table['rate'] = table['rate'].fillna(0.0)
+        table['pages'] = table['pages'].fillna(0.0)
+        table['rate'] = table['rate'].round()
 
-        df['da'] = df['da'].fillna(df['da'].median())
-        df['db'] = df['db'].fillna(df['db'].median())
-        df['dc'] = df['dc'].fillna(df['dc'].median())
-        df['volume'] = df['da'] * df['db'] * df['dc'] * 10**(-3)
+        table['da'] = table['da'].fillna(table['da'].median())
+        table['db'] = table['db'].fillna(table['db'].median())
+        table['dc'] = table['dc'].fillna(dftable['dc'].median())
+        table['volume'] = table['da'] * table['db'] * table['dc'] * 10**(-3)
 
-        df['volume'] = df['volume'].round(1)
-        df['decoration'] = df['decoration'].fillna('Без декораций').str.lower()
+        table['volume'] = table['volume'].round(1)
+        table['decoration'] = table['decoration'].fillna('Без декораций').str.lower()
 
-        df = add_binary_features(df, patterns)
-        df['typeObject'] = df['typeObject'].fillna('Книги')
-        df['foreign_language'] = (df['typeObject'] == 'Книги на иностранном языке').astype(int)
+        table = add_binary_features(table, patterns)
+        table['typeObject'] = table['typeObject'].fillna('Книги')
+        table['foreign_language'] = (table['typeObject'] == 'Книги на иностранном языке').astype(int)
 
-        df['illustrations'] = df['illustrations'].fillna('черно-белые')
+        table['illustrations'] = table['illustrations'].fillna('черно-белые')
 
         # Применяем функцию
-        df = add_binary_features_ill(df, patterns_ill)
+        table = add_binary_features_ill(table, patterns_ill)
 
-        df['pageType'] = df['pageType'].fillna('Газетная')
-        df['pageType'] = df['pageType'].map(self._quality)
-        df['covers'] = df['covers'].fillna('обл - мягкий переплет')
-        df['covers'] = df['covers'].apply(lambda x: x.strip().split(' ')[0])
-        df['covers'] = df['covers'].map(cover)
-        df['covers'] = df['covers'].fillna(0)
+        table['pageType'] = table['pageType'].fillna('Газетная')
+        table['pageType'] = table['pageType'].map(self._quality)
+        table['covers'] = table['covers'].fillna('обл - мягкий переплет')
+        table['covers'] = table['covers'].apply(lambda x: x.strip().split(' ')[0])
+        table['covers'] = table['covers'].map(cover)
+        table['covers'] = table['covers'].fillna(0)
 
-        df = df.drop(columns=self._drop_list)
-        return df[self._select_featers]
+        table = table.drop(columns=self._drop_list)
+        return table[self._select_featers]
 
     def transform(self, dataset):
         continuous_cols = ["pages", "rateSize", "volume"]
