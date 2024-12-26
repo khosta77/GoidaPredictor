@@ -9,9 +9,9 @@ class Cleaner:
     def __init__(self):
         self._drop_list = [
             'Unnamed: 0', 'id', 'imgUrl', 'allPrice', 'sale', 'annotation', 'isbn',
-            'bookName', 'datePublisher', 'da', 'db', 'dc', 'weight', 'age', 'bookGenres', 
+            'bookName', 'datePublisher', 'da', 'db', 'dc', 'weight', 'age', 'bookGenres',
             'decoration', 'typeObject', 'illustrations', 'groupOfType', 'underGroup',
-            'genres', 'authors', 'publisher', 'series', 'sound_module'
+            'genres', 'authors', 'publisher', 'series', 'sound_module', 'myPrice'
         ]
 
         self._patterns = {
@@ -54,30 +54,30 @@ class Cleaner:
         }
 
         self._cover = {
-            'обл': 0, 'Лист': 1, 'Пакет': 2, 'Blister': 3, 'Jewel-box': 4, 
-            'Amarey': 5, 'Blu-Ray': 6, 'карт': 7, 'Обл.': 8, '7Б': 9, 
+            'обл': 0, 'Лист': 1, 'Пакет': 2, 'Blister': 3, 'Jewel-box': 4,
+            'Amarey': 5, 'Blu-Ray': 6, 'карт': 7, 'Обл.': 8, '7Б': 9,
             '7А': 10, '7Бц': 11, 'Инт': 12, 'Box': 13
         }
 
         self._select_featers = [
-            'pages', 'volume', 'covers', 'pageType', 'rateSize', 'foreign_language', 
+            'pages', 'volume', 'covers', 'pageType', 'rateSize', 'foreign_language',
             'rate', 'black_white', 'color', 'slipcase_open', 'partial_lacquer', 'bookmark_ribbon',
             'super_cover', 'embossing_volume', 'embossing_colored', 'embossing_gold', 'edge_trim_colored',
             'edge_trim_gold'
         ]
 
-    def _add_binary_features(df_init, patterns):
+    def _add_binary_features(self, df_init, patterns):
         for feature, pattern in patterns.items():
             df_init[feature] = df_init['decoration'].apply(lambda x: 1 if re.search(pattern, x) else 0)
         return df_init
 
-    def _add_binary_features_ill(df_init, patterns_ill):
+    def _add_binary_features_ill(self, df_init, patterns_ill):
         for feature, pattern in patterns_ill.items():
             df_init[feature] = df_init['illustrations'].apply(lambda x: 1 if re.search(pattern, str(x).lower()) else 0)
         return df_init
 
     def __call__(self, table):
-        table = table.dropna(subset=['myPrice'])
+        #df = table.dropna(subset=['myPrice'])
 
         table['rate'] = table['rate'].fillna(0.0)
         table['pages'] = table['pages'].fillna(0.0)
@@ -85,35 +85,41 @@ class Cleaner:
 
         table['da'] = table['da'].fillna(table['da'].median())
         table['db'] = table['db'].fillna(table['db'].median())
-        table['dc'] = table['dc'].fillna(dftable['dc'].median())
+        table['dc'] = table['dc'].fillna(table['dc'].median())
         table['volume'] = table['da'] * table['db'] * table['dc'] * 10**(-3)
 
         table['volume'] = table['volume'].round(1)
         table['decoration'] = table['decoration'].fillna('Без декораций').str.lower()
 
-        table = add_binary_features(table, patterns)
+        table = self._add_binary_features(table, self._patterns)
         table['typeObject'] = table['typeObject'].fillna('Книги')
         table['foreign_language'] = (table['typeObject'] == 'Книги на иностранном языке').astype(int)
 
         table['illustrations'] = table['illustrations'].fillna('черно-белые')
 
         # Применяем функцию
-        table = add_binary_features_ill(table, patterns_ill)
+        table = self._add_binary_features_ill(table, self._patterns_ill)
 
         table['pageType'] = table['pageType'].fillna('Газетная')
         table['pageType'] = table['pageType'].map(self._quality)
         table['covers'] = table['covers'].fillna('обл - мягкий переплет')
         table['covers'] = table['covers'].apply(lambda x: x.strip().split(' ')[0])
-        table['covers'] = table['covers'].map(cover)
+        table['covers'] = table['covers'].map(self._cover)
         table['covers'] = table['covers'].fillna(0)
 
         table = table.drop(columns=self._drop_list)
         return table[self._select_featers]
 
     def transform(self, dataset):
+        df_clean = pd.read_csv("cleaned_labirint_dataset.csv")
+        df_clean = df_clean.drop(columns=["myPrice"])
         continuous_cols = ["pages", "rateSize", "volume"]
-        dataset[continuous_cols] = StandardScaler().fit_transform(dataset[continuous_cols])
-        dataset = PolynomialFeatures(
-            degree=2, interaction_only=True, include_bias=False
-        ).fit_transform(dataset)
+
+        scaler = StandardScaler()
+        df_clean[continuous_cols] = scaler.fit_transform(df_clean[continuous_cols])
+        dataset[continuous_cols] = scaler.transform(dataset[continuous_cols])
+
+        poly = PolynomialFeatures(degree=2, interaction_only=True, include_bias=False)
+        _ = poly.fit_transform(df_clean)
+        dataset = poly.transform(dataset)
         return dataset
